@@ -26,10 +26,10 @@
             width: 100%;
             text-align: center;
         }
-        input[type="text"] {
+        input[type="text"], input[type="number"] { /* Added type="number" for better mobile keyboard */
             width: 100%;
             padding: 12px;
-            margin-bottom: 15px; /* Adjusted margin for multiple fields */
+            margin-bottom: 15px;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             font-size: 16px;
@@ -97,64 +97,37 @@
 <body>
     <div class="container">
         <h1 class="text-3xl font-extrabold text-gray-900 mb-6">Flood Zone Lookup</h1>
-        <p class="text-gray-600 mb-6">Enter address details to find its FEMA flood zone designation.</p>
+        <p class="text-gray-600 mb-6">Enter latitude and longitude to find its FEMA flood zone designation.</p>
         
-        <input type="text" id="streetInput" placeholder="Street Address">
-        <input type="text" id="cityInput" placeholder="City">
-        <input type="text" id="stateInput" placeholder="State (e.g., CA)">
-        <input type="text" id="zipInput" placeholder="Zip Code">
+        <input type="number" id="latitudeInput" placeholder="Latitude (e.g., 29.809)">
+        <input type="number" id="longitudeInput" placeholder="Longitude (e.g., -83.585)">
 
         <button id="lookupButton">Get Flood Zone</button>
         <div id="resultBox" class="result-box">
-            <p id="resultText">Enter address details above to see the flood zone.</p>
+            <p id="resultText">Enter coordinates above to see the flood zone.</p>
             <div id="loadingSpinner" class="loading-spinner hidden"></div>
         </div>
     </div>
 
     <script>
-        // IMPORTANT: Replace 'YOUR_GEOCODING_API_KEY' with your actual API key from geocode.maps.co
-        // Ensure you use straight single quotes (') or double quotes (") around the key.
-        const GEOCODING_API_KEY = '686e9ebecf9f8490039658thg21714c'; 
+        // No geocoding API key needed as we are directly using coordinates
 
-        const streetInput = document.getElementById('streetInput');
-        const cityInput = document.getElementById('cityInput');
-        const stateInput = document.getElementById('stateInput');
-        const zipInput = document.getElementById('zipInput');
+        const latitudeInput = document.getElementById('latitudeInput');
+        const longitudeInput = document.getElementById('longitudeInput');
         const lookupButton = document.getElementById('lookupButton');
         const resultText = document.getElementById('resultText');
         const loadingSpinner = document.getElementById('loadingSpinner');
 
-        // Function to clean input: remove non-alphanumeric and non-space characters
-        function cleanAddressInput(event) {
-            // Allow letters, numbers, spaces, and common address characters like hyphens, apostrophes, periods, commas
-            // We'll be more lenient here to allow for various street name formats,
-            // but the geocoding API is robust enough to handle minor variations.
-            event.target.value = event.target.value.replace(/[^a-zA-Z0-9\s\.\-']/g, '');
-        }
-
-        // Function to ensure zip code is numeric
-        function enforceNumericInput(event) {
-            event.target.value = event.target.value.replace(/[^0-9]/g, '');
-        }
-
-        // Add input event listeners for real-time validation
-        streetInput.addEventListener('input', cleanAddressInput);
-        cityInput.addEventListener('input', cleanAddressInput);
-        stateInput.addEventListener('input', cleanAddressInput);
-        zipInput.addEventListener('input', enforceNumericInput);
-
+        // No input cleaning functions needed for text, as we are using type="number"
+        // and validating ranges.
 
         lookupButton.addEventListener('click', async () => {
-            const street = streetInput.value.trim();
-            const city = cityInput.value.trim();
-            const state = stateInput.value.trim();
-            const zip = zipInput.value.trim();
+            const latitude = parseFloat(latitudeInput.value.trim());
+            const longitude = parseFloat(longitudeInput.value.trim());
 
-            // Construct the full address string from individual fields
-            const fullAddress = [street, city, state, zip].filter(Boolean).join(', ');
-
-            if (!fullAddress) {
-                displayResult('Please enter at least some address details.', true);
+            // Basic validation for latitude and longitude
+            if (isNaN(latitude) || isNaN(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+                displayResult('Please enter valid latitude (-90 to 90) and longitude (-180 to 180) values.', true);
                 return;
             }
 
@@ -163,32 +136,7 @@
             loadingSpinner.classList.remove('hidden');
 
             try {
-                // Log the full address being sent for debugging
-                console.log('Full address sent to geocoding API:', fullAddress);
-
-                // Step 1: Geocode the address to get latitude and longitude
-                // Using the 'q' parameter for a free-form query, which is flexible
-                const geocodingUrl = `https://geocode.maps.co/search?q=${encodeURIComponent(fullAddress)}&api_key=${GEOCODING_API_KEY}`;
-                const geocodingResponse = await fetch(geocodingUrl);
-                
-                if (!geocodingResponse.ok) {
-                    throw new Error(`Geocoding API error: ${geocodingResponse.statusText}`);
-                }
-                const geocodingData = await geocodingResponse.json();
-
-                // Log the raw geocoding data for debugging
-                console.log('Raw geocoding data:', geocodingData);
-
-                if (!geocodingData || geocodingData.length === 0) {
-                    displayResult('Address not found. Please try a different address or format.', true);
-                    return;
-                }
-
-                // Use the first result's latitude and longitude
-                const latitude = geocodingData[0].lat;
-                const longitude = geocodingData[0].lon;
-
-                // Step 2: Query FEMA NFHL ArcGIS REST Service for flood zone
+                // Step 1: Directly use the provided latitude and longitude to query FEMA NFHL
                 // This is a public ArcGIS REST service for the National Flood Hazard Layer (NFHL)
                 // Layer ID 28 corresponds to the S_FLD_HAZ_AR (Special Flood Hazard Area) layer
                 const femaNfhlServiceUrl = 'https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/28/query';
@@ -203,16 +151,21 @@
                     outSR: '4326' // Output Spatial Reference (WGS84)
                 });
 
+                // Log the FEMA API URL for debugging
+                console.log('FEMA NFHL API Request URL:', `${femaNfhlServiceUrl}?${femaQueryParams.toString()}`);
+
                 const femaResponse = await fetch(`${femaNfhlServiceUrl}?${femaQueryParams.toString()}`);
                 
+                // Log the HTTP status and status text for FEMA API for debugging
+                console.log('FEMA NFHL API Response Status:', femaResponse.status, femaResponse.statusText);
+
                 if (!femaResponse.ok) {
-                    throw new Error(`FEMA NFHL API error: ${femaResponse.statusText}`);
+                    throw new Error(`FEMA NFHL API error: ${femaResponse.statusText} (Status: ${femaResponse.status})`);
                 }
                 const femaData = await femaResponse.json();
 
                 // Log the raw FEMA data for debugging
                 console.log('Raw FEMA NFHL data:', femaData);
-
 
                 if (femaData.features && femaData.features.length > 0) {
                     // Extract the flood zone from the first intersecting feature
