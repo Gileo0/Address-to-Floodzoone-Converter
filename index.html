@@ -113,7 +113,7 @@
 
     <script>
         // IMPORTANT: Replace 'YOUR_GEOCODING_API_KEY' with your actual API key from geocode.maps.co
-        const GEOCODING_API_KEY = ‘686e9ebecf9f8490039658thg21714c'; 
+        const GEOCODING_API_KEY = '686e9ebecf9f8490039658thg21714c'; 
 
         const streetInput = document.getElementById('streetInput');
         const cityInput = document.getElementById('cityInput');
@@ -141,6 +141,7 @@
         cityInput.addEventListener('input', cleanAddressInput);
         stateInput.addEventListener('input', cleanAddressInput);
         zipInput.addEventListener('input', enforceNumericInput);
+
 
         lookupButton.addEventListener('click', async () => {
             const street = streetInput.value.trim();
@@ -234,5 +235,3 @@
     </script>
 </body>
 </html>
-
-
