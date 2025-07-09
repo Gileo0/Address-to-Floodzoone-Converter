@@ -163,6 +163,9 @@
             loadingSpinner.classList.remove('hidden');
 
             try {
+                // Log the full address being sent for debugging
+                console.log('Full address sent to geocoding API:', fullAddress);
+
                 // Step 1: Geocode the address to get latitude and longitude
                 // Using the 'q' parameter for a free-form query, which is flexible
                 const geocodingUrl = `https://geocode.maps.co/search?q=${encodeURIComponent(fullAddress)}&api_key=${GEOCODING_API_KEY}`;
@@ -172,6 +175,9 @@
                     throw new Error(`Geocoding API error: ${geocodingResponse.statusText}`);
                 }
                 const geocodingData = await geocodingResponse.json();
+
+                // Log the raw geocoding data for debugging
+                console.log('Raw geocoding data:', geocodingData);
 
                 if (!geocodingData || geocodingData.length === 0) {
                     displayResult('Address not found. Please try a different address or format.', true);
@@ -203,6 +209,10 @@
                     throw new Error(`FEMA NFHL API error: ${femaResponse.statusText}`);
                 }
                 const femaData = await femaResponse.json();
+
+                // Log the raw FEMA data for debugging
+                console.log('Raw FEMA NFHL data:', femaData);
+
 
                 if (femaData.features && femaData.features.length > 0) {
                     // Extract the flood zone from the first intersecting feature
